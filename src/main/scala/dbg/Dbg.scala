@@ -61,12 +61,11 @@ object Dbg:
       case _: (t *: ts)  => summonInline[TypeName[t]] :: summonTypes[ts]
 
   // T is m.MirroredElemLabels - tuple of singleton types describing labels
-  inline def summonLabels[T <: Tuple]: List[String] = {
-    type ValueOfs = Tuple.Map[T, ValueOf]
-    val valueOfs = summonAll[ValueOfs]
-    valueOfs.toList.map(_.asInstanceOf[ValueOf].value)
-  }
-
+  inline def summonLabels[T <: Tuple]: List[String] =
+    inline erasedValue[T] match
+      case _: EmptyTuple => Nil
+      case _: (t *: ts)  => summonInline[ValueOf[t]].value.asInstanceOf[String] :: summonLabels[ts]
+  
   inline given derived[A](using m: Mirror.Of[A]): Dbg[A] =
     val name = summonInline[TypeName[A]]
     (inline m match {
