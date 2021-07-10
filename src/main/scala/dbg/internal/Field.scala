@@ -1,4 +1,6 @@
-package dbg
+package dbg.internal
+
+import dbg.Dbg
 
 trait Field[A] {
   type Type
