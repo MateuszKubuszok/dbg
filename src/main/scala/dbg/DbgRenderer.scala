@@ -128,7 +128,7 @@ object DbgRenderer:
       }
     }
 
-    def renderMap[K, V](typeName: TypeName[Map[K, V]], keyDbg: Dbg[K], valueDbg: Dbg[V])(
+    override def renderMap[K, V](typeName: TypeName[Map[K, V]], keyDbg: Dbg[K], valueDbg: Dbg[V])(
       value:                      Map[K, V],
       nesting:                    Int,
       sb:                         StringBuilder
@@ -150,7 +150,7 @@ object DbgRenderer:
           .append(")")
       }
 
-    def renderSecured[A](typeName: TypeName[A])(value: A, nesting: Int, sb: StringBuilder): StringBuilder =
+    override def renderSecured[A](typeName: TypeName[A])(value: A, nesting: Int, sb: StringBuilder): StringBuilder =
       sb.appendTypeName(typeName).append("[content redacted]")
 
     extension (sb: StringBuilder)
