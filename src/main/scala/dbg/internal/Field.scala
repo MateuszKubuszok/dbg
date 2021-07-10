@@ -8,4 +8,6 @@ trait Field[A] {
   val index: Int
   val label: String
   val dbg: Dbg[Type]
+  
+  override def toString: String = s"Field($index, $label, $dbg)"
 }

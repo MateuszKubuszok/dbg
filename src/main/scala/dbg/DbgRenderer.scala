@@ -1,6 +1,6 @@
 package dbg
 
-import dbg.internal.{Field, Subtype, TypeName}
+import dbg.internal.{ Field, Subtype, TypeName }
 
 import scala.util.chaining._
 
@@ -67,8 +67,13 @@ object DbgRenderer:
         val nextNesting = nesting + 1
         sb.append("(\n")
           .appendIntercalate(fields, ",\n") { (field, sb0) =>
-            sb0.appendIndent(nextNesting).appendDbg(field.dbg, field.extract(value), nextNesting)
+            sb0
+              .appendIndent(nextNesting)
+              .append(field.label)
+              .append(" = ")
+              .appendDbg(field.dbg, field.extract(value), nextNesting)
           }
+          .append("\n")
           .appendIndent(nesting)
           .append(")")
       }
@@ -102,6 +107,7 @@ object DbgRenderer:
           .appendIntercalate(it, ",\n") { (elem, sb0) =>
             sb0.appendIndent(nextNesting).appendDbg(elemDbg, elem, nextNesting)
           }
+          .append("\n")
           .appendIndent(nesting)
           .append(")")
       }
@@ -124,6 +130,7 @@ object DbgRenderer:
               .append(" -> ")
               .appendDbg(valueDbg, v, nextNesting)
           }
+          .append("\n")
           .appendIndent(nesting)
           .append(")")
       }

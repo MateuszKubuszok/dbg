@@ -44,6 +44,7 @@ object Dbg:
   // ADTs
 
   import scala.compiletime.erasedValue
+  import scala.compiletime.summonAll
   import scala.compiletime.summonInline
   import scala.deriving.Mirror
 
@@ -60,18 +61,19 @@ object Dbg:
       case _: (t *: ts)  => summonInline[TypeName[t]] :: summonTypes[ts]
 
   // T is m.MirroredElemLabels - tuple of singleton types describing labels
-  inline def summonLabels[T <: Tuple]: List[String] =
-    inline erasedValue[T] match
-      case _: EmptyTuple => Nil
-      case _: (t *: ts)  => summonInline[t].asInstanceOf[String] :: summonLabels[ts]
+  inline def summonLabels[T <: Tuple]: List[String] = {
+    type ValueOfs = Tuple.Map[T, ValueOf]
+    val valueOfs = summonAll[ValueOfs]
+    valueOfs.toList.map(_.asInstanceOf[ValueOf].value)
+  }
 
   inline given derived[A](using m: Mirror.Of[A]): Dbg[A] =
     val name = summonInline[TypeName[A]]
-    val dbgs = summonDbgs[m.MirroredElemTypes]
     (inline m match {
+        // TODO: Mirror.Singleton
       case p: Mirror.ProductOf[A] =>
-        dbgProduct(p, name, dbgs, summonTypes[p.MirroredElemTypes], summonLabels[p.MirroredElemLabels])
-      case s: Mirror.SumOf[A] => dbgSum(s, name, dbgs)
+        dbgProduct(p, name, summonDbgs[p.MirroredElemTypes], summonTypes[p.MirroredElemTypes], summonLabels[p.MirroredElemLabels])
+      case s: Mirror.SumOf[A] => dbgSum(s, name, summonDbgs[s.MirroredElemTypes])
     })
 
   def dbgProduct[A](

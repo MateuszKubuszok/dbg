@@ -6,7 +6,7 @@ case class Yolo2[B](a: B)
 
 object Tests {
 
-  enum Complex:// derives Dbg:
+  enum Complex derives Dbg:
     case CaseObject
     case CaseClass(
       s: String,
@@ -34,5 +34,7 @@ object Tests {
   println(debug"test int ${1}")
   println(debug"test string ${"string"}")
   println(debug"test char ${'+'}")
-  //println(debug"test complex: ${Tests.complex}")
+
+  println(summon[Dbg[Float]])
+  println(debug"test complex: ${Tests.complex}")
 }

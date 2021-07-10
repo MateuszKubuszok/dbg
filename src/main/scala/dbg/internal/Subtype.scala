@@ -6,4 +6,6 @@ trait Subtype[A] {
   type Type
   def cast(value: A): Type = value.asInstanceOf[Type]
   val dbg: Dbg[Type]
+
+  override def toString: String = s"Subtype($dbg)"
 }

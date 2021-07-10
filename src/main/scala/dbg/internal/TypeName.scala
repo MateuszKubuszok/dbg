@@ -4,7 +4,7 @@ final case class TypeName[A](fullName: String, shortName: String)
 object TypeName {
   def apply[A](fullName: String): TypeName[A] =
     val segments = fullName.split('.')
-    val shortName = segments.view.drop(1).map(_.last).appended(segments.last).mkString(".")
+    val shortName = segments.init.map(_.head).appended(segments.last).mkString(".")
     TypeName(fullName, shortName)
 
   inline given derived[A]: TypeName[A] = ${typeNameMacro[A]}
@@ -15,8 +15,7 @@ object TypeName {
     import quotes.reflect._
 
     val name = TypeRepr.of[A].show.takeWhile(_ != '[')
-    val const = Literal(StringConstant(name)).asExpr.asInstanceOf[Expr[String]]
 
-    '{ TypeName(${const}) }
+    '{ TypeName(${summon[ToExpr[String]].apply(name)}) }
   }
 }
