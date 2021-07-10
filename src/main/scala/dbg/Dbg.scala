@@ -36,8 +36,11 @@ object Dbg:
 
   // TODO: either, option, try, exception(?)
 
+  // TODO: add method for opaque types
+
   // collections
 
+  // TODO: add more collections
   given [A](using A: Dbg[A]): Dbg[Array[A]] = SeqLike[Array[A], A](TypeName("scala.Array"), A, _.toIterable)
   given [A](using A: Dbg[A]): Dbg[List[A]]  = SeqLike[List[A], A](TypeName("scala.List"), A, identity)
 
@@ -65,7 +68,7 @@ object Dbg:
     inline erasedValue[T] match
       case _: EmptyTuple => Nil
       case _: (t *: ts)  => summonInline[ValueOf[t]].value.asInstanceOf[String] :: summonLabels[ts]
-  
+
   inline given derived[A](using m: Mirror.Of[A]): Dbg[A] =
     val name = summonInline[TypeName[A]]
     (inline m match {
@@ -106,7 +109,7 @@ object Dbg:
     Dbg.SealedTrait(typeName = name, dispatcher = (a: A) => subtypes(s.ordinal(a)))
 end Dbg
 
-// extendsion method
+// extension method
 
 extension [A](value: A)
   def debug(using dbg: Dbg[A], renderer: DbgRenderer): String =
