@@ -35,7 +35,24 @@ import dbg._
 
 given renderer: DbgRenderer = DbgRenderer.Default()
 
-val complex: Complex = ...
+val complex = List(
+  Complex.CaseObject,
+  Complex.CaseClass(
+    s = "test",
+    i = 10,
+    c = '+',
+    f = 1.0f
+  )
+)
 
 println(debug"test complex: $complex")
+//test complex: scala.List(
+//  dbg.Tests.Complex case dbg.Tests.Complex.CaseObject,
+//  dbg.Tests.Complex case dbg.Tests.Complex.CaseClass(
+//    s = "test",
+//    i = 10,
+//    c = '+',
+//    f = 1.0f
+//  )
+//)
 ```
