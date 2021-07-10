@@ -14,6 +14,8 @@ final case class Secured(foo: Long, bar: Float, baz: String)
 
 final case class FieldSecured(foo: Long, bar: Float, baz: String, @secure secured: String)
 
+final case class PolyFieldSecured[A](foo: Long, bar: Float, baz: String, value: A, @secure secured: String)
+
 final case class Nested(mono: Monomorphic, poly: Polymorphic[ADT[Int]], secured: Secured, fieldSecured: FieldSecured)
 
 enum ADT[A]:
@@ -107,12 +109,21 @@ class DbgSpec extends wordspec.AnyWordSpec {
             |  secured = java.lang.String[content redacted]
             |)""".stripMargin
       )
+      assert(
+        PolyFieldSecured(1L, 1.0f, "test", 1, "password").debug ===
+          """dbg.PolyFieldSecured(
+            |  foo = 1L,
+            |  bar = 1.0f,
+            |  baz = "test",
+            |  value = 1,
+            |  secured = java.lang.String[content redacted]
+            |)""".stripMargin
+      )
     }
 
     "correctly derive and render output for enum" in {
       assert(ADT.CaseObject.debug === "dbg.ADT case dbg.ADT.CaseObject")
       assert(ADT.SecuredObject.debug === "dbg.ADT case dbg.ADT.SecuredObject[content redacted]")
-      // FIXME: secure.mkAnnotatedPositions seem to create different thing that I get from secure.annotatedPositions
       assert(
         (ADT.CaseClass(1L, 1.0f, "test", '%', "password"): ADT[Char]).debug ===
           """dbg.ADT case dbg.ADT.CaseClass(
@@ -130,7 +141,6 @@ class DbgSpec extends wordspec.AnyWordSpec {
     }
 
     "correctly derive and render nested structures" in {
-      // FIXME: secure.mkAnnotatedPositions seem to create different thing that I get from secure.annotatedPositions
       assert(
         Nested(
           mono = Monomorphic(1L, 1.0f, "test"),

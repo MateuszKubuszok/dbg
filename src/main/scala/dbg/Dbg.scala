@@ -101,29 +101,26 @@ object Dbg:
 
   inline given derived[A](using m: Mirror.Of[A]): Dbg[A] =
     val name = summonInline[TypeName[A]]
+    val dbgs = summonDbgs[m.MirroredElemTypes]
+    val secured = secure.annotatedPositions[A]
     inline if (secure.isAnnotated[A]) then Secured(name)
     else
       (inline m match {
         case p: Mirror.ProductOf[A] =>
-          dbgProduct(
-            p,
-            name,
-            summonDbgs[p.MirroredElemTypes],
-            summonTypes[p.MirroredElemTypes],
-            summonLabels[p.MirroredElemLabels],
-            secure.annotatedPositions[A]
-          )
+          val types = summonTypes[p.MirroredElemTypes]
+          val labels = summonLabels[p.MirroredElemLabels]
+          dbgProduct(p = p, name = name, dbgs = dbgs, secured = secured, types = types, labels = labels)
         case s: Mirror.SumOf[A] =>
-          dbgSum(s, name, summonDbgs[s.MirroredElemTypes], secure.annotatedPositions[A])
+          dbgSum(s = s, name = name, dbgs =  dbgs, secured = secured)
       })
 
   def dbgProduct[A](
     p:       Mirror.ProductOf[A],
     name:    TypeName[A],
     dbgs:    List[Dbg[_]],
+    secured: List[Boolean],
     types:   List[TypeName[_]],
     labels:  List[String],
-    secured: List[Boolean]
   ): Dbg[A] =
     if labels.isEmpty then Dbg.CaseObject(typeName = name)
     else {

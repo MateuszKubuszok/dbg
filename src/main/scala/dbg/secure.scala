@@ -39,8 +39,9 @@ object secure:
 
     adtType.classSymbol.match
       case Some(adtSym) if adtSym.flags.is(Flags.Case) =>
-        // TODO: filter out only these from annoteeCls.caseFields
-        val fields: List[Expr[Boolean]] = adtSym.primaryConstructor.paramSymss.flatten.map { field =>
+        val fields: List[Expr[Boolean]] = adtSym.primaryConstructor.paramSymss.filter { params =>
+          params.headOption.fold(true)(_.isTerm) // paramSymss might be List(List(type A), List(val x, val y, val z))
+        }.flatten.map { field =>
           field.annotations.find(_.tpe <:< annType) match {
             case Some(_) => '{ true }
             case None    => '{ false }
