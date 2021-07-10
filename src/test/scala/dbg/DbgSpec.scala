@@ -79,8 +79,7 @@ class DbgSpec extends wordspec.AnyWordSpec {
 
     "correctly derive and render output for polymorphic case class" in {
       assert(
-        // TODO: Singleton types - should work with [Char] removed
-        Polymorphic[Char](1L, 1.0f, "test", '%').debug ===
+        Polymorphic(1L, 1.0f, "test", '%').debug ===
           """dbg.Polymorphic(
             |  foo = 1L,
             |  bar = 1.0f,
@@ -100,11 +99,10 @@ class DbgSpec extends wordspec.AnyWordSpec {
     "correctly derive and render output for enum" in {
       assert(ADT.CaseObject.debug === "dbg.ADT case dbg.ADT.CaseObject")
       assert(ADT.SecuredObject.debug === "dbg.ADT case dbg.ADT.SecuredObject[content redacted]")
-      // TODO: fix secured = "password"
-      /*
+      // FIXME: secure.mkAnnotatedPositions seem to create different thing that I get from secure.annotatedPositions
       assert(
-        ADT.CaseClass[Char](1L, 1.0f, "test", '%', "password").debug ===
-          """dbg.ADT.CaseClass(
+        (ADT.CaseClass(1L, 1.0f, "test", '%', "password"): ADT[Char]).debug ===
+          """dbg.ADT case dbg.ADT.CaseClass(
             |  foo = 1L,
             |  bar = 1.0f,
             |  baz = "test",
@@ -112,10 +110,8 @@ class DbgSpec extends wordspec.AnyWordSpec {
             |  secured = java.lang.String[content redacted]
             |)""".stripMargin
       )
-      */
-      // TODO: Singleton types - should work with [Char] removed
       assert(
-        ADT.SecureClass[Char](1L, 1.0f, "test", '%', "password").debug ===
+        ADT.SecureClass(1L, 1.0f, "test", '%', "password").debug ===
           "dbg.ADT.SecureClass[content redacted]"
       )
     }

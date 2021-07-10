@@ -1,6 +1,6 @@
 package dbg
 
-import dbg.internal.{ Field, Subtype, TypeName }
+import dbg.internal.{Field, Subtype, TypeName}
 
 import scala.annotation.implicitNotFound
 
@@ -93,12 +93,17 @@ object Dbg:
       case _: EmptyTuple => Nil
       case _: (t *: ts)  => summonInline[ValueOf[t]].value.asInstanceOf[String] :: summonLabels[ts]
 
+  private val singletonRenderer = DbgRenderer.Default()
+  inline given singleton[A <: AnyVal, B >: A](using ValueOf[A], Dbg[B]): Dbg[A] =
+    given DbgRenderer = singletonRenderer
+    val value = summonInline[ValueOf[A]].value.asInstanceOf[B].debug
+    Primitive(TypeName[A](value), _ => value)
+
   inline given derived[A](using m: Mirror.Of[A]): Dbg[A] =
     val name = summonInline[TypeName[A]]
     inline if (secure.isAnnotated[A]) then Secured(name)
     else
       (inline m match {
-        // TODO: Mirror.Singleton
         case p: Mirror.ProductOf[A] =>
           dbgProduct(
             p,
