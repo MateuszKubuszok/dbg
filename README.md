@@ -34,14 +34,14 @@ final case class InnerSecured(
   f: Float
 )
 
-enum Complex derives Dbg:
+enum Complex derives Dbg: // use build-in derivation mechanics
   case CaseObject
   case CaseClass(
     s:         String,
     i:         Int,
     c:         Char,
     f:         Float,
-    @secure x: String, // hine only one field of a case class
+    @secure x: String, // hide only one field of a case class
     inner:     Inner,
     secure:    InnerSecured
   )
