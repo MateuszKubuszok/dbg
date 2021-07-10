@@ -3,36 +3,42 @@ package dbg
 import dbg.internal.{ Field, Subtype, TypeName }
 
 enum Dbg[A]:
-  case Primitive(format: A => String)
+  case Primitive(typeName: TypeName[A], format: A => String)
   case CaseObject(typeName: TypeName[A])
   case CaseClass(typeName: TypeName[A], fields: Array[Field[A]])
   case SealedTrait(typeName: TypeName[A], dispatcher: A => Subtype[A])
   case Wrapper[A, B](typeName: TypeName[A], unwrap: A => B, dbg: Dbg[B]) extends Dbg[A]
-  case SeqLike[A, Elem](typeName: TypeName[Any], elemDbg: Dbg[Elem], toIterable: A => Iterable[Elem]) extends Dbg[A]
-  case MapLike[K, V](typeName: TypeName[Any], keyDbg: Dbg[K], valueDbg: Dbg[V]) extends Dbg[Map[K, V]]
+  case SeqLike[A, Elem](typeName: TypeName[A], elemDbg: Dbg[Elem], toIterable: A => Iterable[Elem]) extends Dbg[A]
+  case MapLike[K, V](typeName: TypeName[Map[K, V]], keyDbg: Dbg[K], valueDbg: Dbg[V]) extends Dbg[Map[K, V]]
+  case Secured(typeName: TypeName[A])
+
+  val typeName: TypeName[A]
 object Dbg:
+
+  def primitive[A:    TypeName](format: A => String): Dbg[A] = Primitive(summon[TypeName[A]], format)
+  def fromToString[A: TypeName] = primitive[A](_.toString)
 
   // primitives
 
-  given Dbg[Unit]       = Primitive(_ => "()")
-  given Dbg[Boolean]    = Primitive(_.toString)
-  given Dbg[Byte]       = Primitive(_.toString)
-  given Dbg[Short]      = Primitive(_.toString)
-  given Dbg[Int]        = Primitive(_.toString)
-  given Dbg[Long]       = Primitive(_.toString + "L")
-  given Dbg[Float]      = Primitive(_.toString + "f")
-  given Dbg[Double]     = Primitive(_.toString)
-  given Dbg[BigInt]     = Primitive(_.toString)
-  given Dbg[BigDecimal] = Primitive(_.toString)
-  given Dbg[Char]       = Primitive(c => "'%c'".format(c))
-  given Dbg[String]     = Primitive(s => """"%s"""".format(s))
+  given Dbg[Unit]       = primitive(_ => "()")
+  given Dbg[Boolean]    = fromToString
+  given Dbg[Byte]       = fromToString
+  given Dbg[Short]      = fromToString
+  given Dbg[Int]        = fromToString
+  given Dbg[Long]       = primitive(_.toString + "L")
+  given Dbg[Float]      = primitive(_.toString + "f")
+  given Dbg[Double]     = fromToString
+  given Dbg[BigInt]     = fromToString
+  given Dbg[BigDecimal] = fromToString
+  given Dbg[Char]       = primitive(c => "'%c'".format(c))
+  given Dbg[String]     = primitive(s => """"%s"""".format(s))
 
-  given Dbg[scala.concurrent.duration.Duration]       = Primitive(_.toString)
-  given Dbg[scala.concurrent.duration.FiniteDuration] = Primitive(_.toString)
+  given Dbg[scala.concurrent.duration.Duration]       = fromToString
+  given Dbg[scala.concurrent.duration.FiniteDuration] = fromToString
 
-  given Dbg[java.util.UUID] = Primitive(_.toString)
-  given jDuration: Dbg[java.time.Duration] = Primitive(_.toString)
-  given Dbg[java.time.Instant] = Primitive(_.toString)
+  given Dbg[java.util.UUID] = fromToString
+  given jDuration: Dbg[java.time.Duration] = fromToString
+  given Dbg[java.time.Instant] = fromToString
 
   // TODO: either, option, try, exception(?)
 
@@ -71,19 +77,30 @@ object Dbg:
 
   inline given derived[A](using m: Mirror.Of[A]): Dbg[A] =
     val name = summonInline[TypeName[A]]
-    (inline m match {
+    inline if (secure.isAnnotated[A]) then Secured(name)
+    else
+      (inline m match {
         // TODO: Mirror.Singleton
-      case p: Mirror.ProductOf[A] =>
-        dbgProduct(p, name, summonDbgs[p.MirroredElemTypes], summonTypes[p.MirroredElemTypes], summonLabels[p.MirroredElemLabels])
-      case s: Mirror.SumOf[A] => dbgSum(s, name, summonDbgs[s.MirroredElemTypes])
-    })
+        case p: Mirror.ProductOf[A] =>
+          dbgProduct(
+            p,
+            name,
+            summonDbgs[p.MirroredElemTypes],
+            summonTypes[p.MirroredElemTypes],
+            summonLabels[p.MirroredElemLabels],
+            secure.annotatedPositions[A]
+          )
+        case s: Mirror.SumOf[A] =>
+          dbgSum(s, name, summonDbgs[s.MirroredElemTypes], secure.annotatedPositions[A])
+      })
 
   def dbgProduct[A](
-    p:      Mirror.ProductOf[A],
-    name:   TypeName[A],
-    dbgs:   List[Dbg[_]],
-    types:  List[TypeName[_]],
-    labels: List[String]
+    p:       Mirror.ProductOf[A],
+    name:    TypeName[A],
+    dbgs:    List[Dbg[_]],
+    types:   List[TypeName[_]],
+    labels:  List[String],
+    secured: List[Boolean]
   ): Dbg[A] =
     if labels.isEmpty then Dbg.CaseObject(typeName = name)
     else {
@@ -93,17 +110,22 @@ object Dbg:
           override def extract(value: A): Type = value.asInstanceOf[Product].productElement(idx).asInstanceOf[Type]
           val index = idx
           val label = l
-          val dbg   = dbgs(idx).asInstanceOf[Dbg[Type]]
+          val dbg =
+            val d = dbgs(idx).asInstanceOf[Dbg[Type]]
+            if secured(idx) then Secured(d.typeName) else d
         }
       }.toArray
       Dbg.CaseClass(typeName = name, fields = fields)
     }
 
-  def dbgSum[A](s: Mirror.SumOf[A], name: TypeName[A], dbgs: List[Dbg[_]]): Dbg[A] =
+  def dbgSum[A](s: Mirror.SumOf[A], name: TypeName[A], dbgs: List[Dbg[_]], secured: List[Boolean]): Dbg[A] =
     val subtypes = dbgs.zipWithIndex.map { case (d, idx) =>
       new Subtype[A] {
         type Type
-        val dbg = d.asInstanceOf[Dbg[Type]]
+        val dbg = {
+          val d0 = d.asInstanceOf[Dbg[Type]]
+          if secured(idx) then Secured(d0.typeName) else d0
+        }
       }
     }.toArray
     Dbg.SealedTrait(typeName = name, dispatcher = (a: A) => subtypes(s.ordinal(a)))
@@ -111,7 +133,7 @@ end Dbg
 
 // extension method
 
-extension [A](value: A)
+extension [A](value:   A)
   def debug(using dbg: Dbg[A], renderer: DbgRenderer): String =
     renderer.render(dbg)(value, nesting = 0, sb = new StringBuilder).toString()
 
