@@ -2,6 +2,18 @@ package dbg
 
 import dbg.internal.{ Field, Subtype, TypeName }
 
+import scala.annotation.implicitNotFound
+
+@implicitNotFound("""Dbg[$A] not found.
+
+If your type is not a primitive, case class, enum or other supported out-of-the-box
+please provide an instance youself with one of:
+   given yourType: Dbg[YourType] = Dbg.primitive[YourType](toString)
+   given yourType: Dbg[YourType] = Dbg.fromToString[YourType]
+   given yourType: Dbg[YourType] = Dbg.secured[YourType]
+   given yourType: Dbg[YourType] = Dbg.wrapper[YourType, Inner](unpack)
+   // TODO: seq, map
+""")
 enum Dbg[A]:
   case Primitive(typeName: TypeName[A], format: A => String)
   case CaseObject(typeName: TypeName[A])
@@ -16,9 +28,15 @@ enum Dbg[A]:
 object Dbg:
 
   def primitive[A:    TypeName](format: A => String): Dbg[A] = Primitive(summon[TypeName[A]], format)
-  def fromToString[A: TypeName] = primitive[A](_.toString)
+  def fromToString[A: TypeName]: Dbg[A] = primitive[A](_.toString)
+
+  def secured[A: TypeName]: Dbg[A] = Secured(summon[TypeName[A]])
+
+  def wrapper[Outer: TypeName, Inner: Dbg](unwrap: Outer => Inner): Dbg[Outer] = Wrapper(summon[TypeName[Outer]], unwrap, summon[Dbg[Inner]])
 
   // primitives
+
+  given Dbg[Nothing] = primitive(_ => ???)
 
   given Dbg[Unit]       = primitive(_ => "()")
   given Dbg[Boolean]    = fromToString

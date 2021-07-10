@@ -3,7 +3,7 @@ package dbg.internal
 final case class TypeName[A](fullName: String, shortName: String)
 object TypeName {
   def apply[A](fullName: String): TypeName[A] =
-    val segments = fullName.split('.')
+    val segments = fullName.takeWhile(_ != '[').split('.')
     val shortName = segments.init.map(_.head).appended(segments.last).mkString(".")
     TypeName(fullName, shortName)
 

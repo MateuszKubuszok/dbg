@@ -1,9 +1,15 @@
 package dbg
 
-import dbg.internal.{ Field, Subtype, TypeName }
+import dbg.internal.{Field, Subtype, TypeName}
 
+import scala.annotation.implicitNotFound
 import scala.util.chaining._
 
+@implicitNotFound("""DbgRenderer not found.
+
+Don't forget to provide a renderer in your scope e.g. with:
+  given renderer: DbgRenderer = DbgRenderer.Default()
+""")
 trait DbgRenderer:
 
   def renderPrimitive[A](
