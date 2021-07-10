@@ -130,6 +130,7 @@ class DbgSpec extends wordspec.AnyWordSpec {
     }
 
     "correctly derive and render nested structures" in {
+      // FIXME: secure.mkAnnotatedPositions seem to create different thing that I get from secure.annotatedPositions
       assert(
         Nested(
           mono = Monomorphic(1L, 1.0f, "test"),
@@ -151,7 +152,7 @@ class DbgSpec extends wordspec.AnyWordSpec {
                       |      bar = 1.0f,
                       |      baz = "test",
                       |      value = 1,
-                      |      secured = "password"
+                      |      secured = java.lang.String[content redacted]
                       |    )
                       |  ),
                       |  secured = dbg.Secured[content redacted],
