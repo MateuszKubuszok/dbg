@@ -31,6 +31,7 @@ enum Dbg[A]:
 
   inline def narrow[B <: A]: Dbg[B] = this.asInstanceOf[Dbg[B]]
 object Dbg:
+
   inline def of[A](using dbg: Dbg[A]): Dbg[A] = dbg
 
   def primitive[A:    TypeName](format: A => String): Dbg[A] = OneLine(TypeName.of[A], format)
@@ -80,7 +81,7 @@ object Dbg:
   given [K: Dbg, V: Dbg]: Dbg[Map[K, V]] = MapLike(TypeName.of[Map[K, V]], Dbg.of[K], Dbg.of[V])
   given [K: Dbg, V: Dbg]: Dbg[SortedMap[K, V]] = MapLike(TypeName.of[SortedMap[K, V]].widen, Dbg.of[K], Dbg.of[V]).narrow
 
-  // ADTs
+  // ADTs and rerivation
 
   import scala.compiletime.erasedValue
   import scala.compiletime.summonAll
@@ -106,7 +107,7 @@ object Dbg:
       case _: (t *: ts)  => summonInline[ValueOf[t]].value.asInstanceOf[String] :: summonLabels[ts]
 
   private val singletonRenderer = DbgRenderer.Default()
-  inline given singleton[A <: AnyVal, B >: A](using ValueOf[A], Dbg[B]): Dbg[A] =
+  inline given singleton[A <: AnyVal: ValueOf, B >: A: Dbg]: Dbg[A] =
     given DbgRenderer = singletonRenderer
     val value         = (summonInline[ValueOf[A]].value: B).debug
     Literal(TypeName[A](value))
@@ -117,14 +118,14 @@ object Dbg:
     val secured = secure.annotatedPositions[A]
     inline if (secure.isAnnotated[A]) then Secured(name)
     else
-      (inline m match {
+      inline m match
         case p: Mirror.ProductOf[A] =>
           val types  = summonTypes[p.MirroredElemTypes]
           val labels = summonLabels[p.MirroredElemLabels]
           dbgProduct(p = p, name = name, dbgs = dbgs, secured = secured, types = types, labels = labels)
         case s: Mirror.SumOf[A] =>
           dbgSum(s = s, name = name, dbgs = dbgs, secured = secured)
-      })
+
 
   def dbgProduct[A](
     p:       Mirror.ProductOf[A],
@@ -135,9 +136,9 @@ object Dbg:
     labels:  List[String]
   ): Dbg[A] =
     if labels.isEmpty then Literal(typeName = name)
-    else {
+    else
       val fields = labels.zipWithIndex.map { case (l, idx) =>
-        new Field[A] {
+        new Field[A]:
           type Type
           override def extract(value: A): Type = value.asInstanceOf[scala.Product].productElement(idx).asInstanceOf[Type]
           val index = idx
@@ -145,20 +146,16 @@ object Dbg:
           val dbg =
             val d = dbgs(idx).asInstanceOf[Dbg[Type]]
             if secured(idx) then d.asSecured else d
-        }
       }.toArray
       Product(typeName = name, fields = fields)
-    }
 
   def dbgSum[A](s: Mirror.SumOf[A], name: TypeName[A], dbgs: List[Dbg[_]], secured: List[Boolean]): Dbg[A] =
     val subtypes = dbgs.zipWithIndex.map { case (d, idx) =>
-      new Subtype[A] {
+      new Subtype[A]:
         type Type
-        val dbg = {
+        val dbg =
           val d0 = d.asInstanceOf[Dbg[Type]]
           if secured(idx) then Secured(d0.typeName) else d0
-        }
-      }
     }.toArray
     SumType(typeName = name, dispatcher = (a: A) => subtypes(s.ordinal(a)))
 end Dbg

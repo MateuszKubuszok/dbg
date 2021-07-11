@@ -49,7 +49,7 @@ trait DbgRenderer:
 
   def renderSecured[A](typeName: TypeName[A])(value: A, nesting: Int, sb: StringBuilder): StringBuilder
 
-  final def render[A](dbg: Dbg[A])(value: A, nesting: Int, sb: StringBuilder): StringBuilder = dbg.match {
+  final def render[A](dbg: Dbg[A])(value: A, nesting: Int, sb: StringBuilder): StringBuilder = dbg match
     case Dbg.OneLine(typeName, format)           => renderPrimitive(typeName, format)(value, nesting, sb)
     case Dbg.Literal(typeName)                   => renderLiteral(typeName)(value, nesting, sb)
     case Dbg.Product(typeName, fields)           => renderProduct(typeName, fields)(value, nesting, sb)
@@ -58,9 +58,9 @@ trait DbgRenderer:
     case Dbg.SeqLike(typeName, elemDbg, toIt)    => renderSeqLike(typeName, elemDbg, toIt)(value, nesting, sb)
     case Dbg.MapLike(typeName, keyDbg, valueDbg) => renderMapLike(typeName, keyDbg, valueDbg)(value, nesting, sb)
     case Dbg.Secured(typeName)                   => renderSecured(typeName)(value, nesting, sb)
-  }
 
 object DbgRenderer:
+
   final case class Default(indent: String = "  ", isShort: Boolean = false) extends DbgRenderer:
 
     override def renderPrimitive[A](
@@ -112,10 +112,10 @@ object DbgRenderer:
       typeName:   TypeName[A],
       elemDbg:    Dbg[Elem],
       toIterable: A => Iterable[Elem]
-    )(value:      A, nesting: Int, sb: StringBuilder): StringBuilder = {
+    )(value:      A, nesting: Int, sb: StringBuilder): StringBuilder =
       val it = toIterable(value)
       if it.isEmpty then sb.appendTypeName(typeName).append("()")
-      else {
+      else
         val nextNesting = nesting + 1
         sb.appendTypeName(typeName)
           .append("(\n")
@@ -125,8 +125,6 @@ object DbgRenderer:
           .append("\n")
           .appendIndent(nesting)
           .append(")")
-      }
-    }
 
     override def renderMapLike[K, V](typeName: TypeName[Map[K, V]], keyDbg: Dbg[K], valueDbg: Dbg[V])(
       value:                                   Map[K, V],
@@ -134,7 +132,7 @@ object DbgRenderer:
       sb:                                      StringBuilder
     ): StringBuilder =
       if value.isEmpty then sb.appendTypeName(typeName).append("()")
-      else {
+      else
         val nextNesting = nesting + 1
         sb.appendTypeName(typeName)
           .append("(\n")
@@ -148,7 +146,6 @@ object DbgRenderer:
           .append("\n")
           .appendIndent(nesting)
           .append(")")
-      }
 
     override def renderSecured[A](typeName: TypeName[A])(value: A, nesting: Int, sb: StringBuilder): StringBuilder =
       sb.appendTypeName(typeName).append("[content redacted]")
@@ -167,12 +164,12 @@ object DbgRenderer:
       inline def appendIntercalate[A](as: Iterable[A], separator: String)(
         appendA:                          (A, StringBuilder) => StringBuilder
       ): StringBuilder =
-        if (as != null || !as.isEmpty) {
+        if as != null || !as.isEmpty then
           as.tail.foldLeft(appendA(as.head, sb)) { (sb0, a) =>
             appendA(a, sb0.append(separator))
           }
-        }
         sb
 
       inline def appendDbg[A](dbg: Dbg[A], value: A, nesting: Int): StringBuilder =
         render(dbg)(value, nesting, sb)
+end DbgRenderer

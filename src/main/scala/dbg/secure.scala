@@ -6,12 +6,16 @@ class secure extends StaticAnnotation
 
 object secure:
 
+  // Whether Tpe is annotated
+  inline def isAnnotated[Tpe]: Boolean = ${mkIsAnnotated[Tpe, secure]}
+
+  // Whether each element of ADT is annotated.
+  inline def annotatedPositions[ADT]: List[Boolean] = ${mkAnnotatedPositions[ADT, secure]}
+
   import scala.deriving._
   import scala.quoted._
 
-  inline def isAnnotated[Tpe]: Boolean = ${mkIsAnnotated[Tpe, secure]}
-
-  def mkIsAnnotated[Tpe: Type, Ann: Type](using q: Quotes): Expr[Boolean] = {
+  def mkIsAnnotated[Tpe: Type, Ann: Type](using q: Quotes): Expr[Boolean] =
     import q.reflect._
 
     val tpeType = TypeRepr.of[Tpe]
@@ -25,9 +29,6 @@ object secure:
         }
       case None =>
         report.throwError(s"Expected class, got ${tpeType.show}")
-  }
-
-  inline def annotatedPositions[ADT]: List[Boolean] = ${mkAnnotatedPositions[ADT, secure]}
 
   def mkAnnotatedPositions[ADT: Type, Ann: Type](using q: Quotes): Expr[List[Boolean]] =
     import q.reflect._
@@ -58,3 +59,4 @@ object secure:
         Expr.ofList(subclasses)
       case _ =>
         report.throwError(s"Expected case class or a sealed trait (enum), got ${adtType.show}")
+end secure
