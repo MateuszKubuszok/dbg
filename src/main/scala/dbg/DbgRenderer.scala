@@ -1,6 +1,6 @@
 package dbg
 
-import dbg.internal.{Field, Subtype, TypeName}
+import dbg.internal.{ Field, Subtype, TypeName }
 
 import scala.annotation.implicitNotFound
 import scala.util.chaining._
@@ -129,9 +129,9 @@ object DbgRenderer:
     }
 
     override def renderMap[K, V](typeName: TypeName[Map[K, V]], keyDbg: Dbg[K], valueDbg: Dbg[V])(
-      value:                      Map[K, V],
-      nesting:                    Int,
-      sb:                         StringBuilder
+      value:                               Map[K, V],
+      nesting:                             Int,
+      sb:                                  StringBuilder
     ): StringBuilder =
       if value.isEmpty then sb.appendTypeName(typeName).append("()")
       else {

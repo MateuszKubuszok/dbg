@@ -3,6 +3,7 @@ package dbg
 import org.scalatest._
 
 import java.util.UUID
+import scala.collection.immutable.{ Queue, SortedMap, SortedSet }
 import scala.concurrent.duration._
 
 final case class Monomorphic(foo: Long, bar: Float, baz: String)
@@ -53,6 +54,7 @@ class DbgSpec extends wordspec.AnyWordSpec {
     }
 
     "correctly render collections" in {
+      // TODO: customize common instances (List, Vector, Set)
       assert(
         Array("foo", "bar", "baz").debug ===
           """scala.Array(
@@ -63,13 +65,74 @@ class DbgSpec extends wordspec.AnyWordSpec {
       )
       assert(
         List("foo", "bar", "baz").debug ===
-          """scala.List(
+          """scala.collection.immutable.List(
             |  "foo",
             |  "bar",
             |  "baz"
             |)""".stripMargin
       )
-      // TODO: maps, sets, etc
+      assert(
+        Vector("foo", "bar", "baz").debug ===
+          """scala.collection.immutable.Vector(
+            |  "foo",
+            |  "bar",
+            |  "baz"
+            |)""".stripMargin
+      )
+      assert(
+        Queue("foo", "bar", "baz").debug ===
+          """scala.collection.immutable.Queue(
+            |  "foo",
+            |  "bar",
+            |  "baz"
+            |)""".stripMargin
+      )
+      assert(
+        Set("foo", "bar", "baz").debug ===
+          """scala.collection.immutable.Set(
+            |  "foo",
+            |  "bar",
+            |  "baz"
+            |)""".stripMargin
+      )
+      assert(
+        SortedSet("foo", "bar", "baz").debug ===
+          """scala.collection.immutable.SortedSet(
+            |  "bar",
+            |  "baz",
+            |  "foo"
+            |)""".stripMargin
+      )
+      assert(
+        Map("key" -> "value", "key2" -> "value2").debug ===
+          """scala.collection.immutable.Map(
+            |  "key" -> "value",
+            |  "key2" -> "value2"
+            |)""".stripMargin
+      )
+      assert(
+        SortedMap("key" -> "value", "key2" -> "value2").debug ===
+          """scala.collection.immutable.SortedMap(
+            |  "key" -> "value",
+            |  "key2" -> "value2"
+            |)""".stripMargin
+      )
+    }
+
+    "correctly derive and render common types" in {
+      // TODO: customize these instances
+      assert(
+        (Right(10): Either[String, Int]).debug ===
+          """scala.util.Either case scala.util.Right(
+            |  value = 10
+            |)""".stripMargin
+      )
+      assert(
+        (Option(10): Option[Int]).debug ===
+          """scala.Option case scala.Some(
+            |  value = 10
+            |)""".stripMargin
+      )
     }
 
     "correctly derive and render output for monomorphic case class" in {

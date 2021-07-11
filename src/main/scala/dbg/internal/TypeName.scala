@@ -1,6 +1,8 @@
 package dbg.internal
 
-final case class TypeName[A](fullName: String, shortName: String)
+final case class TypeName[A](fullName: String, shortName: String) {
+  def widen[B >: A]: TypeName[B] = this.asInstanceOf[TypeName[B]]
+}
 object TypeName {
   def apply[A](fullName: String): TypeName[A] =
     val segments = fullName.takeWhile(_ != '[').split('.')

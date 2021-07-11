@@ -1,8 +1,9 @@
 package dbg
 
-import dbg.internal.{Field, Subtype, TypeName}
+import dbg.internal.{ Field, Subtype, TypeName }
 
 import scala.annotation.implicitNotFound
+import scala.collection.immutable.{ Queue, SortedMap, SortedSet }
 
 @implicitNotFound("""Dbg[$A] not found.
 
@@ -12,7 +13,7 @@ please provide an instance youself with one of:
    given yourType: Dbg[YourType] = Dbg.fromToString[YourType]
    given yourType: Dbg[YourType] = Dbg.secured[YourType]
    given yourType: Dbg[YourType] = Dbg.wrapper[YourType, Inner](unpack)
-   // TODO: seq, map
+   given yourColl[A: Dbg]: Dbg[YourColl[A]] = Dbg.seqLike[YourColl, A]
 """)
 enum Dbg[A]:
   case Primitive(typeName: TypeName[A], format: A => String)
@@ -25,6 +26,8 @@ enum Dbg[A]:
   case Secured(typeName: TypeName[A])
 
   val typeName: TypeName[A]
+
+  def narrow[B <: A]: Dbg[B] = this.asInstanceOf[Dbg[B]]
 object Dbg:
 
   def primitive[A:    TypeName](format: A => String): Dbg[A] = Primitive(summon[TypeName[A]], format)
@@ -32,7 +35,11 @@ object Dbg:
 
   def secured[A: TypeName]: Dbg[A] = Secured(summon[TypeName[A]])
 
-  def wrapper[Outer: TypeName, Inner: Dbg](unwrap: Outer => Inner): Dbg[Outer] = Wrapper(summon[TypeName[Outer]], unwrap, summon[Dbg[Inner]])
+  def wrapper[Outer: TypeName, Inner: Dbg](unwrap: Outer => Inner): Dbg[Outer] =
+    Wrapper(summon[TypeName[Outer]], unwrap, summon[Dbg[Inner]])
+
+  def seqLike[Coll[A] <: Iterable[A], A: Dbg](using typeName: TypeName[Coll[A]]): Dbg[Coll[A]] =
+    SeqLike(typeName, summon[Dbg[A]], _.toIterable)
 
   // primitives
 
@@ -58,15 +65,18 @@ object Dbg:
   given jDuration: Dbg[java.time.Duration] = fromToString
   given Dbg[java.time.Instant] = fromToString
 
-  // TODO: either, option, try, exception(?)
-
-  // TODO: add method for opaque types
-
   // collections
 
-  // TODO: add more collections
-  given [A](using A: Dbg[A]): Dbg[Array[A]] = SeqLike[Array[A], A](TypeName("scala.Array"), A, _.toIterable)
-  given [A](using A: Dbg[A]): Dbg[List[A]]  = SeqLike[List[A], A](TypeName("scala.List"), A, identity)
+  given [A: Dbg]: Dbg[Array[A]]     = SeqLike[Array[A], A](TypeName("scala.Array"), summon[Dbg[A]], _.toIterable)
+  given [A: Dbg]: Dbg[List[A]]      = seqLike[List, A]
+  given [A: Dbg]: Dbg[Vector[A]]    = seqLike[Vector, A]
+  given [A: Dbg]: Dbg[Queue[A]]     = seqLike[Queue, A]
+  given [A: Dbg]: Dbg[Set[A]]       = seqLike[Set, A]
+  given [A: Dbg]: Dbg[SortedSet[A]] = seqLike[SortedSet, A]
+
+  given [K, V](using K: Dbg[K], V: Dbg[V]): Dbg[Map[K, V]] = MapLike(summon[TypeName[Map[K, V]]], K, V)
+  given [K, V](using K: Dbg[K], V: Dbg[V]): Dbg[SortedMap[K, V]] =
+    MapLike(summon[TypeName[SortedMap[K, V]]].widen, K, V).narrow
 
   // ADTs
 
@@ -96,22 +106,22 @@ object Dbg:
   private val singletonRenderer = DbgRenderer.Default()
   inline given singleton[A <: AnyVal, B >: A](using ValueOf[A], Dbg[B]): Dbg[A] =
     given DbgRenderer = singletonRenderer
-    val value = summonInline[ValueOf[A]].value.asInstanceOf[B].debug
+    val value         = summonInline[ValueOf[A]].value.asInstanceOf[B].debug
     Primitive(TypeName[A](value), _ => value)
 
   inline given derived[A](using m: Mirror.Of[A]): Dbg[A] =
-    val name = summonInline[TypeName[A]]
-    val dbgs = summonDbgs[m.MirroredElemTypes]
+    val name    = summonInline[TypeName[A]]
+    val dbgs    = summonDbgs[m.MirroredElemTypes]
     val secured = secure.annotatedPositions[A]
     inline if (secure.isAnnotated[A]) then Secured(name)
     else
       (inline m match {
         case p: Mirror.ProductOf[A] =>
-          val types = summonTypes[p.MirroredElemTypes]
+          val types  = summonTypes[p.MirroredElemTypes]
           val labels = summonLabels[p.MirroredElemLabels]
           dbgProduct(p = p, name = name, dbgs = dbgs, secured = secured, types = types, labels = labels)
         case s: Mirror.SumOf[A] =>
-          dbgSum(s = s, name = name, dbgs =  dbgs, secured = secured)
+          dbgSum(s = s, name = name, dbgs = dbgs, secured = secured)
       })
 
   def dbgProduct[A](
@@ -120,7 +130,7 @@ object Dbg:
     dbgs:    List[Dbg[_]],
     secured: List[Boolean],
     types:   List[TypeName[_]],
-    labels:  List[String],
+    labels:  List[String]
   ): Dbg[A] =
     if labels.isEmpty then Dbg.CaseObject(typeName = name)
     else {
