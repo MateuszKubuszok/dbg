@@ -1,9 +1,11 @@
 package dbg.internal
 
 final case class TypeName[A](fullName: String, shortName: String) {
-  def widen[B >: A]: TypeName[B] = this.asInstanceOf[TypeName[B]]
+  inline def widen[B >: A]: TypeName[B] = this.asInstanceOf[TypeName[B]]
 }
 object TypeName {
+  inline def of[A](using typeName: TypeName[A]): TypeName[A] = typeName
+
   def apply[A](fullName: String): TypeName[A] =
     val segments = fullName.takeWhile(_ != '[').split('.')
     val shortName = segments.init.map(_.head).appended(segments.last).mkString(".")

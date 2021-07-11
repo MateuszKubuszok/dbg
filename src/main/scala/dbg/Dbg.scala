@@ -16,10 +16,10 @@ please provide an instance youself with one of:
    given yourColl[A: Dbg]: Dbg[YourColl[A]] = Dbg.seqLike[YourColl, A]
 """)
 enum Dbg[A]:
-  case Primitive(typeName: TypeName[A], format: A => String)
-  case CaseObject(typeName: TypeName[A])
-  case CaseClass(typeName: TypeName[A], fields: Array[Field[A]])
-  case SealedTrait(typeName: TypeName[A], dispatcher: A => Subtype[A])
+  case OneLine(typeName: TypeName[A], format: A => String)
+  case Literal(typeName: TypeName[A])
+  case Product(typeName: TypeName[A], fields: Array[Field[A]])
+  case SumType(typeName: TypeName[A], dispatcher: A => Subtype[A])
   case Wrapper[A, B](typeName: TypeName[A], unwrap: A => B, dbg: Dbg[B]) extends Dbg[A]
   case SeqLike[A, Elem](typeName: TypeName[A], elemDbg: Dbg[Elem], toIterable: A => Iterable[Elem]) extends Dbg[A]
   case MapLike[K, V](typeName: TypeName[Map[K, V]], keyDbg: Dbg[K], valueDbg: Dbg[V]) extends Dbg[Map[K, V]]
@@ -27,19 +27,22 @@ enum Dbg[A]:
 
   val typeName: TypeName[A]
 
-  def narrow[B <: A]: Dbg[B] = this.asInstanceOf[Dbg[B]]
-object Dbg:
+  def asSecured: Dbg[A] = Secured(typeName)
 
-  def primitive[A:    TypeName](format: A => String): Dbg[A] = Primitive(summon[TypeName[A]], format)
+  inline def narrow[B <: A]: Dbg[B] = this.asInstanceOf[Dbg[B]]
+object Dbg:
+  inline def of[A](using dbg: Dbg[A]): Dbg[A] = dbg
+
+  def primitive[A:    TypeName](format: A => String): Dbg[A] = OneLine(TypeName.of[A], format)
   def fromToString[A: TypeName]: Dbg[A] = primitive[A](_.toString)
 
-  def secured[A: TypeName]: Dbg[A] = Secured(summon[TypeName[A]])
+  def secured[A: TypeName]: Dbg[A] = Secured(TypeName.of[A])
 
   def wrapper[Outer: TypeName, Inner: Dbg](unwrap: Outer => Inner): Dbg[Outer] =
-    Wrapper(summon[TypeName[Outer]], unwrap, summon[Dbg[Inner]])
+    Wrapper(TypeName.of[Outer], unwrap, Dbg.of[Inner])
 
   def seqLike[Coll[A] <: Iterable[A], A: Dbg](using typeName: TypeName[Coll[A]]): Dbg[Coll[A]] =
-    SeqLike(typeName, summon[Dbg[A]], _.toIterable)
+    SeqLike(typeName, Dbg.of[A], _.toIterable)
 
   // primitives
 
@@ -67,16 +70,15 @@ object Dbg:
 
   // collections
 
-  given [A: Dbg]: Dbg[Array[A]]     = SeqLike[Array[A], A](TypeName("scala.Array"), summon[Dbg[A]], _.toIterable)
+  given [A: Dbg]: Dbg[Array[A]]     = SeqLike[Array[A], A](TypeName("scala.Array"), Dbg.of[A], _.toIterable)
   given [A: Dbg]: Dbg[List[A]]      = seqLike[List, A]
   given [A: Dbg]: Dbg[Vector[A]]    = seqLike[Vector, A]
   given [A: Dbg]: Dbg[Queue[A]]     = seqLike[Queue, A]
   given [A: Dbg]: Dbg[Set[A]]       = seqLike[Set, A]
   given [A: Dbg]: Dbg[SortedSet[A]] = seqLike[SortedSet, A]
 
-  given [K, V](using K: Dbg[K], V: Dbg[V]): Dbg[Map[K, V]] = MapLike(summon[TypeName[Map[K, V]]], K, V)
-  given [K, V](using K: Dbg[K], V: Dbg[V]): Dbg[SortedMap[K, V]] =
-    MapLike(summon[TypeName[SortedMap[K, V]]].widen, K, V).narrow
+  given [K: Dbg, V: Dbg]: Dbg[Map[K, V]] = MapLike(TypeName.of[Map[K, V]], Dbg.of[K], Dbg.of[V])
+  given [K: Dbg, V: Dbg]: Dbg[SortedMap[K, V]] = MapLike(TypeName.of[SortedMap[K, V]].widen, Dbg.of[K], Dbg.of[V]).narrow
 
   // ADTs
 
@@ -106,8 +108,8 @@ object Dbg:
   private val singletonRenderer = DbgRenderer.Default()
   inline given singleton[A <: AnyVal, B >: A](using ValueOf[A], Dbg[B]): Dbg[A] =
     given DbgRenderer = singletonRenderer
-    val value         = summonInline[ValueOf[A]].value.asInstanceOf[B].debug
-    Primitive(TypeName[A](value), _ => value)
+    val value         = (summonInline[ValueOf[A]].value: B).debug
+    Literal(TypeName[A](value))
 
   inline given derived[A](using m: Mirror.Of[A]): Dbg[A] =
     val name    = summonInline[TypeName[A]]
@@ -132,20 +134,20 @@ object Dbg:
     types:   List[TypeName[_]],
     labels:  List[String]
   ): Dbg[A] =
-    if labels.isEmpty then Dbg.CaseObject(typeName = name)
+    if labels.isEmpty then Literal(typeName = name)
     else {
       val fields = labels.zipWithIndex.map { case (l, idx) =>
         new Field[A] {
           type Type
-          override def extract(value: A): Type = value.asInstanceOf[Product].productElement(idx).asInstanceOf[Type]
+          override def extract(value: A): Type = value.asInstanceOf[scala.Product].productElement(idx).asInstanceOf[Type]
           val index = idx
           val label = l
           val dbg =
             val d = dbgs(idx).asInstanceOf[Dbg[Type]]
-            if secured(idx) then Secured(d.typeName) else d
+            if secured(idx) then d.asSecured else d
         }
       }.toArray
-      Dbg.CaseClass(typeName = name, fields = fields)
+      Product(typeName = name, fields = fields)
     }
 
   def dbgSum[A](s: Mirror.SumOf[A], name: TypeName[A], dbgs: List[Dbg[_]], secured: List[Boolean]): Dbg[A] =
@@ -158,7 +160,7 @@ object Dbg:
         }
       }
     }.toArray
-    Dbg.SealedTrait(typeName = name, dispatcher = (a: A) => subtypes(s.ordinal(a)))
+    SumType(typeName = name, dispatcher = (a: A) => subtypes(s.ordinal(a)))
 end Dbg
 
 // extension method

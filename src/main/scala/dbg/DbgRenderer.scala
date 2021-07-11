@@ -17,14 +17,14 @@ trait DbgRenderer:
     format:   A => String
   )(value:    A, nesting: Int, sb: StringBuilder): StringBuilder
 
-  def renderCaseObject[A](typeName: TypeName[A])(value: A, nesting: Int, sb: StringBuilder): StringBuilder
+  def renderLiteral[A](typeName: TypeName[A])(value: A, nesting: Int, sb: StringBuilder): StringBuilder
 
-  def renderCaseClass[A](
+  def renderProduct[A](
     typeName: TypeName[A],
     fields:   Array[Field[A]]
   )(value:    A, nesting: Int, sb: StringBuilder): StringBuilder
 
-  def renderSealedTrait[A](
+  def renderSumType[A](
     typeName:   TypeName[A],
     dispatcher: A => Subtype[A]
   )(value:      A, nesting: Int, sb: StringBuilder): StringBuilder
@@ -35,28 +35,28 @@ trait DbgRenderer:
     sb:                             StringBuilder
   ): StringBuilder
 
-  def renderSeq[A, Elem](
+  def renderSeqLike[A, Elem](
     typeName:   TypeName[A],
     elemDbg:    Dbg[Elem],
     toIterable: A => Iterable[Elem]
   )(value:      A, nesting: Int, sb: StringBuilder): StringBuilder
 
-  def renderMap[K, V](typeName: TypeName[Map[K, V]], keyDbg: Dbg[K], valueDbg: Dbg[V])(
-    value:                      Map[K, V],
-    nesting:                    Int,
-    sb:                         StringBuilder
+  def renderMapLike[K, V](typeName: TypeName[Map[K, V]], keyDbg: Dbg[K], valueDbg: Dbg[V])(
+    value:                          Map[K, V],
+    nesting:                        Int,
+    sb:                             StringBuilder
   ): StringBuilder
 
   def renderSecured[A](typeName: TypeName[A])(value: A, nesting: Int, sb: StringBuilder): StringBuilder
 
   final def render[A](dbg: Dbg[A])(value: A, nesting: Int, sb: StringBuilder): StringBuilder = dbg.match {
-    case Dbg.Primitive(typeName, format)         => renderPrimitive(typeName, format)(value, nesting, sb)
-    case Dbg.CaseObject(typeName)                => renderCaseObject(typeName)(value, nesting, sb)
-    case Dbg.CaseClass(typeName, fields)         => renderCaseClass(typeName, fields)(value, nesting, sb)
-    case Dbg.SealedTrait(typeName, dispatcher)   => renderSealedTrait(typeName, dispatcher)(value, nesting, sb)
+    case Dbg.OneLine(typeName, format)           => renderPrimitive(typeName, format)(value, nesting, sb)
+    case Dbg.Literal(typeName)                   => renderLiteral(typeName)(value, nesting, sb)
+    case Dbg.Product(typeName, fields)           => renderProduct(typeName, fields)(value, nesting, sb)
+    case Dbg.SumType(typeName, dispatcher)       => renderSumType(typeName, dispatcher)(value, nesting, sb)
     case Dbg.Wrapper(typeName, unwrap, dbg)      => renderWrapper(typeName, unwrap, dbg)(value, nesting, sb)
-    case Dbg.SeqLike(typeName, elemDbg, toIt)    => renderSeq(typeName, elemDbg, toIt)(value, nesting, sb)
-    case Dbg.MapLike(typeName, keyDbg, valueDbg) => renderMap(typeName, keyDbg, valueDbg)(value, nesting, sb)
+    case Dbg.SeqLike(typeName, elemDbg, toIt)    => renderSeqLike(typeName, elemDbg, toIt)(value, nesting, sb)
+    case Dbg.MapLike(typeName, keyDbg, valueDbg) => renderMapLike(typeName, keyDbg, valueDbg)(value, nesting, sb)
     case Dbg.Secured(typeName)                   => renderSecured(typeName)(value, nesting, sb)
   }
 
@@ -69,10 +69,10 @@ object DbgRenderer:
     )(value:    A, nesting: Int, sb: StringBuilder): StringBuilder =
       sb.append(format(value))
 
-    override def renderCaseObject[A](typeName: TypeName[A])(value: A, nesting: Int, sb: StringBuilder): StringBuilder =
+    override def renderLiteral[A](typeName: TypeName[A])(value: A, nesting: Int, sb: StringBuilder): StringBuilder =
       sb.appendTypeName(typeName)
 
-    override def renderCaseClass[A](
+    override def renderProduct[A](
       typeName: TypeName[A],
       fields:   Array[Field[A]]
     )(value:    A, nesting: Int, sb: StringBuilder): StringBuilder =
@@ -93,7 +93,7 @@ object DbgRenderer:
           .append(")")
       }
 
-    override def renderSealedTrait[A](
+    override def renderSumType[A](
       typeName:   TypeName[A],
       dispatcher: A => Subtype[A]
     )(value:      A, nesting: Int, sb: StringBuilder): StringBuilder =
@@ -108,7 +108,7 @@ object DbgRenderer:
     ): StringBuilder =
       sb.appendTypeName(typeName).append("(").appendDbg(dbg, unwrap(value), nesting).append(")")
 
-    def renderSeq[A, Elem](
+    def renderSeqLike[A, Elem](
       typeName:   TypeName[A],
       elemDbg:    Dbg[Elem],
       toIterable: A => Iterable[Elem]
@@ -128,10 +128,10 @@ object DbgRenderer:
       }
     }
 
-    override def renderMap[K, V](typeName: TypeName[Map[K, V]], keyDbg: Dbg[K], valueDbg: Dbg[V])(
-      value:                               Map[K, V],
-      nesting:                             Int,
-      sb:                                  StringBuilder
+    override def renderMapLike[K, V](typeName: TypeName[Map[K, V]], keyDbg: Dbg[K], valueDbg: Dbg[V])(
+      value:                                   Map[K, V],
+      nesting:                                 Int,
+      sb:                                      StringBuilder
     ): StringBuilder =
       if value.isEmpty then sb.appendTypeName(typeName).append("()")
       else {
