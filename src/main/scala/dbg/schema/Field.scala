@@ -1,4 +1,4 @@
-package dbg.internal
+package dbg.schema
 
 import dbg.Dbg
 

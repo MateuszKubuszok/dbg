@@ -1,4 +1,4 @@
-package dbg.internal
+package dbg.compiletime
 
 opaque type DbgRendered = String
 

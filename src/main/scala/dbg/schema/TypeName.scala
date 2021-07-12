@@ -1,4 +1,4 @@
-package dbg.internal
+package dbg.schema
 
 final case class TypeName[A](fullName: String, shortName: String):
 

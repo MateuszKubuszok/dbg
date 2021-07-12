@@ -1,6 +1,7 @@
 package dbg
 
-import dbg.internal._
+import dbg.compiletime.DbgRendered
+import dbg.schema._
 
 import scala.annotation.implicitNotFound
 import scala.collection.immutable.{Queue, SortedMap, SortedSet}
@@ -213,8 +214,8 @@ extension [A](value:   A)
 
 // interpolation
 
-given [A](using Dbg[A], DbgRenderer): Conversion[A, internal.DbgRendered] with
-  def apply(value: A): internal.DbgRendered = internal.DbgRendered.pack(value.debug)
+given [A](using Dbg[A], DbgRenderer): Conversion[A, compiletime.DbgRendered] with
+  def apply(value: A): compiletime.DbgRendered = compiletime.DbgRendered.pack(value.debug)
 
 extension (sc:        StringContext)
-  def debug(rendered: internal.DbgRendered*): String = sc.s(internal.DbgRendered.unpack(rendered): _*)
+  def debug(rendered: compiletime.DbgRendered*): String = sc.s(compiletime.DbgRendered.unpack(rendered): _*)

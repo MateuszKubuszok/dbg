@@ -1,6 +1,6 @@
 package dbg
 
-import dbg.internal.{ Field, Subtype, TypeName }
+import dbg.schema._
 
 import scala.annotation.implicitNotFound
 import scala.util.chaining._
@@ -21,12 +21,12 @@ trait DbgRenderer:
 
   def renderProduct[A](
     typeName: TypeName[A],
-    fields:   Array[Field[A]]
+    fields:   Fields[A]
   )(value:    A, nesting: Int, sb: StringBuilder): StringBuilder
 
   def renderSumType[A](
     typeName:   TypeName[A],
-    dispatcher: A => Subtype[A]
+    dispatcher: Dispatcher[A]
   )(value:      A, nesting: Int, sb: StringBuilder): StringBuilder
 
   def renderWrapper[A, B](typeName: TypeName[A], unwrap: A => B, dbg: Dbg[B])(
@@ -51,7 +51,7 @@ trait DbgRenderer:
 
   @scala.annotation.tailrec
   final def render[A](dbg: Dbg[A])(value: A, nesting: Int, sb: StringBuilder): StringBuilder = dbg match
-    case Dbg.Defered(_, dbg)                        => render(dbg())(value, nesting, sb)
+    case Dbg.Defered(_, dbg)                     => render(dbg())(value, nesting, sb)
     case Dbg.OneLine(typeName, format)           => renderPrimitive(typeName, format)(value, nesting, sb)
     case Dbg.Literal(typeName)                   => renderLiteral(typeName)(value, nesting, sb)
     case Dbg.Product(typeName, fields)           => renderProduct(typeName, fields)(value, nesting, sb)
@@ -76,7 +76,7 @@ object DbgRenderer:
 
     override def renderProduct[A](
       typeName: TypeName[A],
-      fields:   Array[Field[A]]
+      fields:   Fields[A]
     )(value:    A, nesting: Int, sb: StringBuilder): StringBuilder =
       sb.appendTypeName(typeName)
       if fields.isEmpty then sb.append("()")
@@ -97,7 +97,7 @@ object DbgRenderer:
 
     override def renderSumType[A](
       typeName:   TypeName[A],
-      dispatcher: A => Subtype[A]
+      dispatcher: Dispatcher[A]
     )(value:      A, nesting: Int, sb: StringBuilder): StringBuilder =
       sb.appendTypeName(typeName).append(" case ")
       val subtype = dispatcher(value)
