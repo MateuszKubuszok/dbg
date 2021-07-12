@@ -127,7 +127,6 @@ object Dbg:
     val value         = (summonInline[ValueOf[A]].value: B).debug
     Literal(TypeName[A](value))
 
-  // TODO: handle recursive types
   inline given derived[A](using m: Mirror.Of[A]): Dbg[A] =
     val name = summonInline[TypeName[A]]
     inline if (secure.isAnnotated[A]) then Secured(name)
