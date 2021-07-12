@@ -2,6 +2,7 @@ package dbg
 
 import scala.annotation.StaticAnnotation
 
+/** Marks case class/enum/case class field/enum element as something that should have its internals hidden. */
 class secure extends StaticAnnotation
 
 object secure:

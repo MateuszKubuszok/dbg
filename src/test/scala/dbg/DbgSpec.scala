@@ -204,7 +204,6 @@ class DbgSpec extends wordspec.AnyWordSpec {
     }
 
     "correctly derive and render nested structures" in {
-      println(Dbg.schemaOf[Nested])
       assert(
         Nested(
           mono = Monomorphic(1L, 1.0f, "test"),
@@ -237,6 +236,277 @@ class DbgSpec extends wordspec.AnyWordSpec {
                       |    secured = java.lang.String[content redacted]
                       |  )
                       |)""".stripMargin
+      )
+    }
+
+    "correctly introspect its own Schema" in {
+      assert(
+        Dbg.schemaOf[Nested] ===
+          """dbg.schema.Dbg case dbg.schema.Dbg.Product(
+            |  typeName = dbg.schema.TypeName(
+            |    fullName = "dbg.Nested",
+            |    shortName = "d.Nested"
+            |  ),
+            |  fields = scala.Array(
+            |    dbg.schema.Field(
+            |      index = 0,
+            |      label = "mono",
+            |      dbg = dbg.schema.Dbg case dbg.schema.Dbg.Product(
+            |        typeName = dbg.schema.TypeName(
+            |          fullName = "dbg.Monomorphic",
+            |          shortName = "d.Monomorphic"
+            |        ),
+            |        fields = scala.Array(
+            |          dbg.schema.Field(
+            |            index = 0,
+            |            label = "foo",
+            |            dbg = dbg.schema.Dbg case dbg.schema.Dbg.OneLine(
+            |              typeName = dbg.schema.TypeName(
+            |                fullName = "scala.Long",
+            |                shortName = "s.Long"
+            |              ),
+            |              format = [function]
+            |            )
+            |          ),
+            |          dbg.schema.Field(
+            |            index = 1,
+            |            label = "bar",
+            |            dbg = dbg.schema.Dbg case dbg.schema.Dbg.OneLine(
+            |              typeName = dbg.schema.TypeName(
+            |                fullName = "scala.Float",
+            |                shortName = "s.Float"
+            |              ),
+            |              format = [function]
+            |            )
+            |          ),
+            |          dbg.schema.Field(
+            |            index = 2,
+            |            label = "baz",
+            |            dbg = dbg.schema.Dbg case dbg.schema.Dbg.OneLine(
+            |              typeName = dbg.schema.TypeName(
+            |                fullName = "java.lang.String",
+            |                shortName = "j.l.String"
+            |              ),
+            |              format = [function]
+            |            )
+            |          )
+            |        )
+            |      )
+            |    ),
+            |    dbg.schema.Field(
+            |      index = 1,
+            |      label = "poly",
+            |      dbg = dbg.schema.Dbg case dbg.schema.Dbg.Product(
+            |        typeName = dbg.schema.TypeName(
+            |          fullName = "dbg.Polymorphic",
+            |          shortName = "d.Polymorphic"
+            |        ),
+            |        fields = scala.Array(
+            |          dbg.schema.Field(
+            |            index = 0,
+            |            label = "foo",
+            |            dbg = dbg.schema.Dbg case dbg.schema.Dbg.OneLine(
+            |              typeName = dbg.schema.TypeName(
+            |                fullName = "scala.Long",
+            |                shortName = "s.Long"
+            |              ),
+            |              format = [function]
+            |            )
+            |          ),
+            |          dbg.schema.Field(
+            |            index = 1,
+            |            label = "bar",
+            |            dbg = dbg.schema.Dbg case dbg.schema.Dbg.OneLine(
+            |              typeName = dbg.schema.TypeName(
+            |                fullName = "scala.Float",
+            |                shortName = "s.Float"
+            |              ),
+            |              format = [function]
+            |            )
+            |          ),
+            |          dbg.schema.Field(
+            |            index = 2,
+            |            label = "baz",
+            |            dbg = dbg.schema.Dbg case dbg.schema.Dbg.OneLine(
+            |              typeName = dbg.schema.TypeName(
+            |                fullName = "java.lang.String",
+            |                shortName = "j.l.String"
+            |              ),
+            |              format = [function]
+            |            )
+            |          ),
+            |          dbg.schema.Field(
+            |            index = 3,
+            |            label = "value",
+            |            dbg = dbg.schema.Dbg case dbg.schema.Dbg.SumType(
+            |              typeName = dbg.schema.TypeName(
+            |                fullName = "dbg.ADT",
+            |                shortName = "d.ADT"
+            |              ),
+            |              dispatcher = dbg.schema.Dispatcher(
+            |                subtypes = scala.Array(
+            |                  dbg.schema.Subtype(
+            |                    dbg = dbg.schema.Dbg case dbg.schema.Dbg.Literal(
+            |                      typeName = dbg.schema.TypeName(
+            |                        fullName = "dbg.ADT.CaseObject",
+            |                        shortName = "d.A.CaseObject"
+            |                      )
+            |                    )
+            |                  ),
+            |                  dbg.schema.Subtype(
+            |                    dbg = dbg.schema.Dbg case dbg.schema.Dbg.Secured(
+            |                      typeName = dbg.schema.TypeName(
+            |                        fullName = "dbg.ADT.SecuredObject",
+            |                        shortName = "d.A.SecuredObject"
+            |                      )
+            |                    )
+            |                  ),
+            |                  dbg.schema.Subtype(
+            |                    dbg = dbg.schema.Dbg case dbg.schema.Dbg.Product(
+            |                      typeName = dbg.schema.TypeName(
+            |                        fullName = "dbg.ADT.CaseClass",
+            |                        shortName = "d.A.CaseClass"
+            |                      ),
+            |                      fields = scala.Array(
+            |                        dbg.schema.Field(
+            |                          index = 0,
+            |                          label = "foo",
+            |                          dbg = dbg.schema.Dbg case dbg.schema.Dbg.OneLine(
+            |                            typeName = dbg.schema.TypeName(
+            |                              fullName = "scala.Long",
+            |                              shortName = "s.Long"
+            |                            ),
+            |                            format = [function]
+            |                          )
+            |                        ),
+            |                        dbg.schema.Field(
+            |                          index = 1,
+            |                          label = "bar",
+            |                          dbg = dbg.schema.Dbg case dbg.schema.Dbg.OneLine(
+            |                            typeName = dbg.schema.TypeName(
+            |                              fullName = "scala.Float",
+            |                              shortName = "s.Float"
+            |                            ),
+            |                            format = [function]
+            |                          )
+            |                        ),
+            |                        dbg.schema.Field(
+            |                          index = 2,
+            |                          label = "baz",
+            |                          dbg = dbg.schema.Dbg case dbg.schema.Dbg.OneLine(
+            |                            typeName = dbg.schema.TypeName(
+            |                              fullName = "java.lang.String",
+            |                              shortName = "j.l.String"
+            |                            ),
+            |                            format = [function]
+            |                          )
+            |                        ),
+            |                        dbg.schema.Field(
+            |                          index = 3,
+            |                          label = "value",
+            |                          dbg = dbg.schema.Dbg case dbg.schema.Dbg.OneLine(
+            |                            typeName = dbg.schema.TypeName(
+            |                              fullName = "scala.Int",
+            |                              shortName = "s.Int"
+            |                            ),
+            |                            format = [function]
+            |                          )
+            |                        ),
+            |                        dbg.schema.Field(
+            |                          index = 4,
+            |                          label = "secured",
+            |                          dbg = dbg.schema.Dbg case dbg.schema.Dbg.Secured(
+            |                            typeName = dbg.schema.TypeName(
+            |                              fullName = "java.lang.String",
+            |                              shortName = "j.l.String"
+            |                            )
+            |                          )
+            |                        )
+            |                      )
+            |                    )
+            |                  ),
+            |                  dbg.schema.Subtype(
+            |                    dbg = dbg.schema.Dbg case dbg.schema.Dbg.Secured(
+            |                      typeName = dbg.schema.TypeName(
+            |                        fullName = "dbg.ADT.SecureClass",
+            |                        shortName = "d.A.SecureClass"
+            |                      )
+            |                    )
+            |                  )
+            |                )
+            |              )
+            |            )
+            |          )
+            |        )
+            |      )
+            |    ),
+            |    dbg.schema.Field(
+            |      index = 2,
+            |      label = "secured",
+            |      dbg = dbg.schema.Dbg case dbg.schema.Dbg.Secured(
+            |        typeName = dbg.schema.TypeName(
+            |          fullName = "dbg.Secured",
+            |          shortName = "d.Secured"
+            |        )
+            |      )
+            |    ),
+            |    dbg.schema.Field(
+            |      index = 3,
+            |      label = "fieldSecured",
+            |      dbg = dbg.schema.Dbg case dbg.schema.Dbg.Product(
+            |        typeName = dbg.schema.TypeName(
+            |          fullName = "dbg.FieldSecured",
+            |          shortName = "d.FieldSecured"
+            |        ),
+            |        fields = scala.Array(
+            |          dbg.schema.Field(
+            |            index = 0,
+            |            label = "foo",
+            |            dbg = dbg.schema.Dbg case dbg.schema.Dbg.OneLine(
+            |              typeName = dbg.schema.TypeName(
+            |                fullName = "scala.Long",
+            |                shortName = "s.Long"
+            |              ),
+            |              format = [function]
+            |            )
+            |          ),
+            |          dbg.schema.Field(
+            |            index = 1,
+            |            label = "bar",
+            |            dbg = dbg.schema.Dbg case dbg.schema.Dbg.OneLine(
+            |              typeName = dbg.schema.TypeName(
+            |                fullName = "scala.Float",
+            |                shortName = "s.Float"
+            |              ),
+            |              format = [function]
+            |            )
+            |          ),
+            |          dbg.schema.Field(
+            |            index = 2,
+            |            label = "baz",
+            |            dbg = dbg.schema.Dbg case dbg.schema.Dbg.OneLine(
+            |              typeName = dbg.schema.TypeName(
+            |                fullName = "java.lang.String",
+            |                shortName = "j.l.String"
+            |              ),
+            |              format = [function]
+            |            )
+            |          ),
+            |          dbg.schema.Field(
+            |            index = 3,
+            |            label = "secured",
+            |            dbg = dbg.schema.Dbg case dbg.schema.Dbg.Secured(
+            |              typeName = dbg.schema.TypeName(
+            |                fullName = "java.lang.String",
+            |                shortName = "j.l.String"
+            |              )
+            |            )
+            |          )
+            |        )
+            |      )
+            |    )
+            |  )
+            |)""".stripMargin
       )
     }
   }

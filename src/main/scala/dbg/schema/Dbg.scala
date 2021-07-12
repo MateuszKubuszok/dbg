@@ -1,12 +1,13 @@
-package dbg
+package dbg.schema
 
+import dbg._
 import dbg.compiletime.DbgRendered
-import dbg.schema._
 
 import scala.annotation.implicitNotFound
 import scala.collection.immutable.{Queue, SortedMap, SortedSet}
 
-@implicitNotFound("""Dbg[$A] not found.
+/** Schema of type A which can be used by [[dbg.DbgRenderer]] to print debug data. */
+@implicitNotFound("""dbg.Dbg[$A] not found.
 
 If your type is not a primitive, case class, enum or other supported out-of-the-box
 please provide an instance youself with one of:
@@ -34,21 +35,30 @@ enum Dbg[A]:
   inline def narrow[B <: A]: Dbg[B] = this.asInstanceOf[Dbg[B]]
 object Dbg:
 
+  /** Summons Dbg instance */
   inline def of[A](using dbg: Dbg[A]): Dbg[A] = dbg
 
+  /** Shows Dbg schema of given type */
   inline def schemaOf[A](using Dbg[A], DbgRenderer): String = of[A].debug
 
+  /** Intended to provide custom implementation of a simple type */
   def primitive[A:    TypeName](format: A => String): Dbg[A] = OneLine(TypeName.of[A], format)
+
+  /** Intended to render type using toString */
   def fromToString[A: TypeName]: Dbg[A] = primitive[A](_.toString)
 
+  /** Intended to use with types which should hide their details */
   def secured[A: TypeName]: Dbg[A] = Secured(TypeName.of[A])
 
+  /** Intended to use manually with wrapper types (AnyVals, opaque types, Refined types, @newtypes, ...) */
   def wrapper[Outer: TypeName, Inner: Dbg](unwrap: Outer => Inner): Dbg[Outer] =
     Wrapper(TypeName.of[Outer], unwrap, Dbg.of[Inner])
 
+  /** Intended to provide a collection type */
   def seqLike[Coll[A] <: Iterable[A], A: Dbg](using typeName: TypeName[Coll[A]]): Dbg[Coll[A]] =
     SeqLike(typeName, Dbg.of[A], _.toIterable)
 
+  /** Intended to allow recursive definitions */
   def defer[A: TypeName](thunk: => Dbg[A]): Dbg[A] = Defered(TypeName.of[A], () => thunk)
 
   // primitives
@@ -134,15 +144,14 @@ object Dbg:
         case s: Mirror.SumOf[A] =>
           dbgSum(s = s, name = name, dbgs = dbgs, secured = secured)
 
-
   def dbgProduct[A](
-    p:       Mirror.ProductOf[A],
-    name:    TypeName[A],
-    dbgs:    List[Dbg[_]],
-    secured: List[Boolean],
-    types:   List[TypeName[_]],
-    labels:  List[String]
-  ): Dbg[A] =
+                     p:       Mirror.ProductOf[A],
+                     name:    TypeName[A],
+                     dbgs:    List[Dbg[_]],
+                     secured: List[Boolean],
+                     types:   List[TypeName[_]],
+                     labels:  List[String]
+                   ): Dbg[A] =
     if labels.isEmpty then Literal(typeName = name)
     else
       val fields = labels.zipWithIndex.map { case (label, index) =>
@@ -205,17 +214,3 @@ object Dbg:
   given [A, B]: Dbg[Dbg.SeqLike[A, B]] = reusableSeqLikeDbg.asInstanceOf[Dbg[Dbg.SeqLike[A, B]]]
   given [A, B]: Dbg[Dbg.MapLike[A, B]] = reusableMapLikeDbg.asInstanceOf[Dbg[Dbg.MapLike[A, B]]]
 end Dbg
-
-// extension method
-
-extension [A](value:   A)
-  def debug(using dbg: Dbg[A], renderer: DbgRenderer): String =
-    renderer.render(dbg)(value, nesting = 0, sb = new StringBuilder).toString()
-
-// interpolation
-
-given [A](using Dbg[A], DbgRenderer): Conversion[A, compiletime.DbgRendered] with
-  def apply(value: A): compiletime.DbgRendered = compiletime.DbgRendered.pack(value.debug)
-
-extension (sc:        StringContext)
-  def debug(rendered: compiletime.DbgRendered*): String = sc.s(compiletime.DbgRendered.unpack(rendered): _*)

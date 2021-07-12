@@ -1,5 +1,6 @@
 package dbg.compiletime
 
+/** Debug-rendered value used by string interpolation. */
 opaque type DbgRendered = String
 
 object DbgRendered:

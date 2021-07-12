@@ -1,5 +1,6 @@
 package dbg.schema
 
+/** Metadata storing type's name (without type parameters) */
 final case class TypeName[A](fullName: String, shortName: String):
 
   inline def widen[B >: A]: TypeName[B] = this.asInstanceOf[TypeName[B]]

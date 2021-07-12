@@ -5,6 +5,7 @@ import dbg.schema._
 import scala.annotation.implicitNotFound
 import scala.util.chaining._
 
+/** Renders value using its Dbg schema to interpret it recurively. */
 @implicitNotFound("""DbgRenderer not found.
 
 Don't forget to provide a renderer in your scope e.g. with:
@@ -63,6 +64,7 @@ trait DbgRenderer:
 
 object DbgRenderer:
 
+  /** Build-in renderer. */
   final case class Default(indent: String = "  ", isShort: Boolean = false) extends DbgRenderer:
 
     override def renderPrimitive[A](

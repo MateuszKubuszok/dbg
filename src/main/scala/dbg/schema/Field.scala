@@ -1,7 +1,6 @@
 package dbg.schema
 
-import dbg.Dbg
-
+/** Metadata of a Product type's field. */
 sealed trait Field[A]:
   type Type
 
@@ -19,5 +18,3 @@ object Field:
     def extract(value: A): Type = e(value)
   }
 end Field
-
-type Fields[A] = Array[Field[A]]

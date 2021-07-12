@@ -1,7 +1,6 @@
 package dbg.schema
 
-import dbg.Dbg
-
+/** Metadata of a sum type element. */
 sealed trait Subtype[A]:
   type Type
 
@@ -16,7 +15,3 @@ object Subtype:
     type Type = Tpe
   }
 end Subtype
-
-final case class Dispatcher[A](subtypes: Array[Subtype[A]])(toOrdinal: A => Int) extends (A => Subtype[A]):
-
-  def apply(value: A): Subtype[A] = subtypes(toOrdinal(value))
