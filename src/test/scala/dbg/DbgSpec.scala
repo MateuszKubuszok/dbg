@@ -19,6 +19,8 @@ final case class PolyFieldSecured[A](foo: Long, bar: Float, baz: String, value: 
 
 final case class Nested(mono: Monomorphic, poly: Polymorphic[ADT[Int]], secured: Secured, fieldSecured: FieldSecured)
 
+final case class Recursive(recur: Option[Recursive])
+
 enum ADT[A]:
   case CaseObject extends ADT[Nothing]
   @secure case SecuredObject extends ADT[Nothing]
@@ -185,7 +187,7 @@ class DbgSpec extends wordspec.AnyWordSpec {
     }
 
     "correctly derive and render output for enum" in {
-      assert(ADT.CaseObject.debug === "dbg.ADT case dbg.ADT.CaseObject")
+      assert((ADT.CaseObject : ADT.CaseObject.type) .debug === "dbg.ADT case dbg.ADT.CaseObject")
       assert(ADT.SecuredObject.debug === "dbg.ADT case dbg.ADT.SecuredObject[content redacted]")
       assert(
         (ADT.CaseClass(1L, 1.0f, "test", '%', "password"): ADT[Char]).debug ===
@@ -238,6 +240,14 @@ class DbgSpec extends wordspec.AnyWordSpec {
                       |)""".stripMargin
       )
     }
+
+    // https://github.com/lampepfl/dotty/issues/8183 :(
+    /*
+    "correctly handle recursive types" in {
+      println(Recursive(Some(Recursive(Some(Recursive(None))))).debug)
+      // TODO: implement assert
+    }
+    */
 
     "correctly introspect its own Schema" in {
       assert(

@@ -33,8 +33,8 @@ object secure:
   def mkAnnotatedPositions[ADT: Type, Ann: Type](using q: Quotes): Expr[List[Boolean]] =
     import q.reflect._
 
-    val adtType = TypeRepr.of[ADT]
-    val annType = TypeRepr.of[Ann]
+    val adtType = TypeRepr.of[ADT].dealias
+    val annType = TypeRepr.of[Ann].dealias
 
     val annSymbol = annType.typeSymbol
 

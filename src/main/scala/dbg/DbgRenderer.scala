@@ -13,7 +13,7 @@ Don't forget to provide a renderer in your scope e.g. with:
 """)
 trait DbgRenderer:
 
-  def renderPrimitive[A](
+  def renderOneLine[A](
     typeName: TypeName[A],
     format:   A => String
   )(value:    A, nesting: Int, sb: StringBuilder): StringBuilder
@@ -30,7 +30,7 @@ trait DbgRenderer:
     dispatcher: Dispatcher[A]
   )(value:      A, nesting: Int, sb: StringBuilder): StringBuilder
 
-  def renderWrapper[A, B](typeName: TypeName[A], unwrap: A => B, dbg: Dbg[B])(
+  def renderWrapper[A, B](typeName: TypeName[A], unwrap: A => B, dbg: Dbg[B], skipWrapper: Boolean)(
     value:                          A,
     nesting:                        Int,
     sb:                             StringBuilder
@@ -50,24 +50,22 @@ trait DbgRenderer:
 
   def renderSecured[A](typeName: TypeName[A])(value: A, nesting: Int, sb: StringBuilder): StringBuilder
 
-  @scala.annotation.tailrec
   final def render[A](dbg: Dbg[A])(value: A, nesting: Int, sb: StringBuilder): StringBuilder = dbg match
-    case Dbg.Defered(_, dbg)                     => render(dbg())(value, nesting, sb)
-    case Dbg.OneLine(typeName, format)           => renderPrimitive(typeName, format)(value, nesting, sb)
-    case Dbg.Literal(typeName)                   => renderLiteral(typeName)(value, nesting, sb)
-    case Dbg.Product(typeName, fields)           => renderProduct(typeName, fields)(value, nesting, sb)
-    case Dbg.SumType(typeName, dispatcher)       => renderSumType(typeName, dispatcher)(value, nesting, sb)
-    case Dbg.Wrapper(typeName, unwrap, dbg)      => renderWrapper(typeName, unwrap, dbg)(value, nesting, sb)
-    case Dbg.SeqLike(typeName, elemDbg, toIt)    => renderSeqLike(typeName, elemDbg, toIt)(value, nesting, sb)
-    case Dbg.MapLike(typeName, keyDbg, valueDbg) => renderMapLike(typeName, keyDbg, valueDbg)(value, nesting, sb)
-    case Dbg.Secured(typeName)                   => renderSecured(typeName)(value, nesting, sb)
+    case Dbg.OneLine(typeName, format)            => renderOneLine(typeName, format)(value, nesting, sb)
+    case Dbg.Literal(typeName)                    => renderLiteral(typeName)(value, nesting, sb)
+    case Dbg.Product(typeName, fields)            => renderProduct(typeName, fields.value)(value, nesting, sb)
+    case Dbg.SumType(typeName, dispatcher)        => renderSumType(typeName, dispatcher)(value, nesting, sb)
+    case Dbg.Wrapper(typeName, unwrap, dbg, skip) => renderWrapper(typeName, unwrap, dbg, skip)(value, nesting, sb)
+    case Dbg.SeqLike(typeName, elemDbg, toIt)     => renderSeqLike(typeName, elemDbg, toIt)(value, nesting, sb)
+    case Dbg.MapLike(typeName, keyDbg, valueDbg)  => renderMapLike(typeName, keyDbg, valueDbg)(value, nesting, sb)
+    case Dbg.Secured(typeName)                    => renderSecured(typeName)(value, nesting, sb)
 
 object DbgRenderer:
 
   /** Build-in renderer. */
   final case class Default(indent: String = "  ", isShort: Boolean = false) extends DbgRenderer:
 
-    override def renderPrimitive[A](
+    override def renderOneLine[A](
       typeName: TypeName[A],
       format:   A => String
     )(value:    A, nesting: Int, sb: StringBuilder): StringBuilder =
@@ -105,11 +103,12 @@ object DbgRenderer:
       val subtype = dispatcher(value)
       sb.appendDbg(subtype.dbg, subtype.cast(value), nesting)
 
-    override def renderWrapper[A, B](typeName: TypeName[A], unwrap: A => B, dbg: Dbg[B])(
+    override def renderWrapper[A, B](typeName: TypeName[A], unwrap: A => B, dbg: Dbg[B], skipWrapper: Boolean)(
       value:                                   A,
       nesting:                                 Int,
       sb:                                      StringBuilder
     ): StringBuilder =
+      if skipWrapper then sb.appendDbg(dbg, unwrap(value), nesting) else
       sb.appendTypeName(typeName).append("(").appendDbg(dbg, unwrap(value), nesting).append(")")
 
     def renderSeqLike[A, Elem](
