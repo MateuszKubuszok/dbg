@@ -1,9 +1,9 @@
 package dbg
 
-import dbg.internal.{ Field, Subtype, TypeName }
+import dbg.internal._
 
 import scala.annotation.implicitNotFound
-import scala.collection.immutable.{ Queue, SortedMap, SortedSet }
+import scala.collection.immutable.{Queue, SortedMap, SortedSet}
 
 @implicitNotFound("""Dbg[$A] not found.
 
@@ -16,10 +16,11 @@ please provide an instance youself with one of:
    given yourColl[A: Dbg]: Dbg[YourColl[A]] = Dbg.seqLike[YourColl, A]
 """)
 enum Dbg[A]:
+  case Defered(typeName: TypeName[A], dbg: () => Dbg[A])
   case OneLine(typeName: TypeName[A], format: A => String)
   case Literal(typeName: TypeName[A])
-  case Product(typeName: TypeName[A], fields: Array[Field[A]])
-  case SumType(typeName: TypeName[A], dispatcher: A => Subtype[A])
+  case Product(typeName: TypeName[A], fields: Fields[A])
+  case SumType(typeName: TypeName[A], dispatcher: Dispatcher[A])
   case Wrapper[A, B](typeName: TypeName[A], unwrap: A => B, dbg: Dbg[B]) extends Dbg[A]
   case SeqLike[A, Elem](typeName: TypeName[A], elemDbg: Dbg[Elem], toIterable: A => Iterable[Elem]) extends Dbg[A]
   case MapLike[K, V](typeName: TypeName[Map[K, V]], keyDbg: Dbg[K], valueDbg: Dbg[V]) extends Dbg[Map[K, V]]
@@ -34,6 +35,8 @@ object Dbg:
 
   inline def of[A](using dbg: Dbg[A]): Dbg[A] = dbg
 
+  inline def schemaOf[A](using Dbg[A], DbgRenderer): String = of[A].debug
+
   def primitive[A:    TypeName](format: A => String): Dbg[A] = OneLine(TypeName.of[A], format)
   def fromToString[A: TypeName]: Dbg[A] = primitive[A](_.toString)
 
@@ -44,6 +47,8 @@ object Dbg:
 
   def seqLike[Coll[A] <: Iterable[A], A: Dbg](using typeName: TypeName[Coll[A]]): Dbg[Coll[A]] =
     SeqLike(typeName, Dbg.of[A], _.toIterable)
+
+  def defer[A: TypeName](thunk: => Dbg[A]): Dbg[A] = Defered(TypeName.of[A], () => thunk)
 
   // primitives
 
@@ -68,6 +73,8 @@ object Dbg:
   given Dbg[java.util.UUID] = fromToString
   given jDuration: Dbg[java.time.Duration] = fromToString
   given Dbg[java.time.Instant] = fromToString
+
+  given [A, B]: Dbg[A => B] = primitive(_ => "[function]")
 
   // collections
 
@@ -137,27 +144,65 @@ object Dbg:
   ): Dbg[A] =
     if labels.isEmpty then Literal(typeName = name)
     else
-      val fields = labels.zipWithIndex.map { case (l, idx) =>
-        new Field[A]:
-          type Type
-          override def extract(value: A): Type = value.asInstanceOf[scala.Product].productElement(idx).asInstanceOf[Type]
-          val index = idx
-          val label = l
-          val dbg =
-            val d = dbgs(idx).asInstanceOf[Dbg[Type]]
-            if secured(idx) then d.asSecured else d
+      val fields = labels.zipWithIndex.map { case (label, index) =>
+        type Type
+        Field[A, Type](
+          index = index,
+          label = label,
+          dbg =
+            val d = dbgs(index).asInstanceOf[Dbg[Type]]
+            if secured(index) then d.asSecured else d
+        )(_.asInstanceOf[scala.Product].productElement(index).asInstanceOf[Type])
       }.toArray
       Product(typeName = name, fields = fields)
 
   def dbgSum[A](s: Mirror.SumOf[A], name: TypeName[A], dbgs: List[Dbg[_]], secured: List[Boolean]): Dbg[A] =
     val subtypes = dbgs.zipWithIndex.map { case (d, idx) =>
-      new Subtype[A]:
-        type Type
-        val dbg =
+      type Type
+      Subtype[A, Type](
+        dbg =
           val d0 = d.asInstanceOf[Dbg[Type]]
           if secured(idx) then Secured(d0.typeName) else d0
+      )
     }.toArray
-    SumType(typeName = name, dispatcher = (a: A) => subtypes(s.ordinal(a)))
+    SumType(typeName = name, dispatcher = Dispatcher(subtypes)(s.ordinal))
+
+  // instances for Dbg types which cannot be actually derived (because of dependant-types)
+  // to save some memory these instances are derived only once (Dbg params are NOT use anywhere in the derivation)
+
+  private lazy val reusableFieldDbg = Product[Field[String]](
+    typeName = TypeName.of[Field[String]],
+    fields = Array(
+      Field[Field[String], Int](0, "index", Dbg.of[Int])(_.index),
+      Field[Field[String], String](1, "label", Dbg.of[String])(_.label),
+      Field[Field[String], Dbg[String]](2, "dbg", defer(reusabeDbgDbg))(_.dbg.asInstanceOf[Dbg[String]])
+    )
+  )
+  private lazy val reusableSubTypeDbg = Product[Subtype[String]](
+    typeName = TypeName.of[Subtype[String]],
+    fields = Array(
+      Field[Subtype[String], Dbg[String]](0, "dbg", defer(reusabeDbgDbg))(_.dbg.asInstanceOf[Dbg[String]])
+    )
+  )
+  private lazy val reusableDispatcherDbg = Product[Dispatcher[String]](
+    typeName = TypeName.of[Dispatcher[String]],
+    fields = Array(
+      Field[Dispatcher[String], Array[Subtype[String]]](0, "subtypes", Dbg.of[Array[Subtype[String]]])(_.subtypes)
+    )
+  )
+  private lazy val reusableWrapperDbg = defer(derived[Dbg.Wrapper[String, String]])
+  private lazy val reusableSeqLikeDbg = defer(derived[Dbg.SeqLike[String, String]])
+  private lazy val reusableMapLikeDbg = defer(derived[Dbg.MapLike[String, String]])
+  private lazy val reusabeDbgDbg: Dbg[Dbg[String]] = derived[Dbg[String]]
+
+  given [A]: Dbg[Field[A]] = reusableFieldDbg.asInstanceOf[Dbg[Field[A]]]
+  given [A]: Dbg[Subtype[A]] = reusableSubTypeDbg.asInstanceOf[Dbg[Subtype[A]]]
+  given [A]: Dbg[Dispatcher[A]] = reusableDispatcherDbg.asInstanceOf[Dbg[Dispatcher[A]]]
+
+  given [A]: Dbg[Dbg.Defered[A]] = primitive(_ => "[defered]")
+  given [A, B]: Dbg[Dbg.Wrapper[A, B]] = reusableWrapperDbg.asInstanceOf[Dbg[Dbg.Wrapper[A, B]]]
+  given [A, B]: Dbg[Dbg.SeqLike[A, B]] = reusableSeqLikeDbg.asInstanceOf[Dbg[Dbg.SeqLike[A, B]]]
+  given [A, B]: Dbg[Dbg.MapLike[A, B]] = reusableMapLikeDbg.asInstanceOf[Dbg[Dbg.MapLike[A, B]]]
 end Dbg
 
 // extension method

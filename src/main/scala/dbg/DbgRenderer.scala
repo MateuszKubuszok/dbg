@@ -49,7 +49,9 @@ trait DbgRenderer:
 
   def renderSecured[A](typeName: TypeName[A])(value: A, nesting: Int, sb: StringBuilder): StringBuilder
 
+  @scala.annotation.tailrec
   final def render[A](dbg: Dbg[A])(value: A, nesting: Int, sb: StringBuilder): StringBuilder = dbg match
+    case Dbg.Defered(_, dbg)                        => render(dbg())(value, nesting, sb)
     case Dbg.OneLine(typeName, format)           => renderPrimitive(typeName, format)(value, nesting, sb)
     case Dbg.Literal(typeName)                   => renderLiteral(typeName)(value, nesting, sb)
     case Dbg.Product(typeName, fields)           => renderProduct(typeName, fields)(value, nesting, sb)

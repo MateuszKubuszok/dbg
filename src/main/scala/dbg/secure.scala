@@ -27,8 +27,7 @@ object secure:
           case Some(_) => '{ true }
           case None    => '{ false }
         }
-      case None =>
-        report.throwError(s"Expected class, got ${tpeType.show}")
+      case None => '{ false }
 
   def mkAnnotatedPositions[ADT: Type, Ann: Type](using q: Quotes): Expr[List[Boolean]] =
     import q.reflect._

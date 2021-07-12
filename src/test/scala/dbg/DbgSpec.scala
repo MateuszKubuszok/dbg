@@ -204,6 +204,7 @@ class DbgSpec extends wordspec.AnyWordSpec {
     }
 
     "correctly derive and render nested structures" in {
+      println(Dbg.schemaOf[Nested])
       assert(
         Nested(
           mono = Monomorphic(1L, 1.0f, "test"),

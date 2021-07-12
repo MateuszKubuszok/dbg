@@ -10,28 +10,8 @@ given Dbg[StackTraceElement] = Dbg.OneLine(
 
 given [E <: Throwable: dbg.internal.TypeName]: Dbg[E] =
   val fields = Array(
-    new dbg.internal.Field[E]:
-      type Type = String
-
-      def extract(value: E): Type = value.getMessage
-      val index: Int       = 0
-      val label: String    = "message"
-      val dbg:   Dbg[Type] = Dbg.of[String]
-    ,
-    new dbg.internal.Field[E]:
-      type Type = Array[StackTraceElement]
-
-      def extract(value: E): Type = value.getStackTrace
-      val index: Int       = 1
-      val label: String    = "stackTrace"
-      val dbg:   Dbg[Type] = Dbg.of[Array[StackTraceElement]]
-    ,
-    new dbg.internal.Field[E]:
-      type Type = Throwable
-
-      def extract(value: E): Type = value.getCause
-      val index: Int       = 2
-      val label: String    = "cause"
-      val dbg:   Dbg[Type] = Dbg.of[Throwable]
+    dbg.internal.Field[E, String](0, "message", Dbg.of[String])(_.getMessage),
+    dbg.internal.Field[E, Array[StackTraceElement]](1, "stackTrace", Dbg.of[Array[StackTraceElement]])(_.getStackTrace),
+    dbg.internal.Field[E, Throwable](2, "cause", Dbg.of[Throwable])(_.getCause)
   )
   Dbg.Product(typeName = dbg.internal.TypeName.of[E], fields = fields)
