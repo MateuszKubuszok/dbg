@@ -34,7 +34,7 @@ final case class InnerSecured(
   f: Float
 )
 
-enum Complex derives Dbg: // use build-in derivation mechanics
+enum Complex derives schema.Dbg: // use build-in derivation mechanics
   case CaseObject
   case CaseClass(
     s:         String,
@@ -51,15 +51,7 @@ enum Complex derives Dbg: // use build-in derivation mechanics
 Calling:
 
 ```scala
-import dbg._
-
-// You can
-// - use Default(isShort = true) to use one-letter package names instead of full names
-// - use Default(indent = yourIndent) to replace the default 2-spaces as a single indentation
-// - provide your own custom DbgRenderer
-given renderer: DbgRenderer = DbgRenderer.Default()
-
-val complex = List(
+val example = List(
   Complex.CaseObject,
   Complex.CaseClass(
     s = "test",
@@ -84,9 +76,20 @@ val complex = List(
     p = "password"
   )
 )
+```
 
-println(debug"test complex: $complex")
-//test complex: scala.List(
+```scala
+import dbg._
+
+// You can:
+// - use Default(isShort = true) to use one-letter package names instead of full names
+// - use Default(indent = yourIndent) to replace the default 2-spaces as a single indentation
+// - provide your own custom DbgRenderer if you want to handle differently collections, maps,
+//   products, sum types, etc
+given DbgRenderer = DbgRenderer.Default()
+
+println(debug"render example: $example")
+//render example: scala.collection.immutable.List(
 //  dbg.Tests.Complex case dbg.Tests.Complex.CaseObject,
 //  dbg.Tests.Complex case dbg.Tests.Complex.CaseClass(
 //    s = "test",
@@ -105,3 +108,5 @@ println(debug"test complex: $complex")
 //  dbg.Tests.Complex case dbg.Tests.Complex.Secured[content redacted]
 //)
 ```
+
+More examples of output can be checked in [tests](src/test/scala/dbg/DbgSpec.scala).
